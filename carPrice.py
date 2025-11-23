@@ -19,14 +19,11 @@ import seaborn as sns
 # Load dataset (adjust path)
 df = pd.read_csv("data/vehicles.csv")
 
-# Quick look
-print(df.shape)
-print(df.columns)
-df.head()
-df.info()
-df.describe()
-
-
+# Initial exploration
+print(df.info())
+print(df.describe(include='all'))
+print(df.head())
+print(df.isnull().sum())
 
 ### Data Preparation
 '''
@@ -46,9 +43,16 @@ features = ['year', 'odometer', 'manufacturer', 'condition', 'fuel', 'transmissi
 df = df[features + ['price']]
 
 # Fill missing values
-df = df.fillna({'condition':'unknown', 'fuel':'unknown', 'transmission':'unknown', 'type':'unknown'})
-df['odometer'] = df['odometer'].fillna(df['odometer'].median())
 
+df = df.fillna({
+    'year': df['year'].median(),
+    'manufacturer': 'unknown',
+    'condition': 'unknown',
+    'fuel': 'unknown',
+    'transmission': 'unknown',
+    'type': 'unknown'
+})
+df['odometer'] = df['odometer'].fillna(df['odometer'].median())
 
 ### Exploratory Data Analysis
 
@@ -93,15 +97,7 @@ from sklearn.model_selection import train_test_split
 X = df[features]
 y = df['price']
 
-X = X.fillna({
-    'odometer': X['odometer'].median(),
-    'year': X['year'].median(),
-    'manufacturer': 'unknown',
-    'condition': 'unknown',
-    'fuel': 'unknown',
-    'transmission': 'unknown',
-    'type': 'unknown'
-})
+
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
