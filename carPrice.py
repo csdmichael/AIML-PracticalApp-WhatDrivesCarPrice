@@ -76,6 +76,14 @@ sns.scatterplot(data=df.sample(5000, random_state=42), x='odometer', y='price', 
 plt.title("Price vs Odometer")
 plt.show()
 
+# Average price by manufacturer (top 10)
+plt.figure(figsize=(10,5))
+avg_price = df.groupby('manufacturer')['price'].mean().sort_values(ascending=False).head(10)
+sns.barplot(x=avg_price.index, y=avg_price.values)
+plt.title("Top 10 Manufacturers by Average Price")
+plt.xticks(rotation=45)
+plt.show()
+
 # ============================================
 # 4. MODELING SETUP
 # ============================================
