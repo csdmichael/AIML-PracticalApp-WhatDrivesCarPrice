@@ -11,9 +11,9 @@ import seaborn as sns
 
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder, PolynomialFeatures, StandardScaler
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.linear_model import Lasso, LinearRegression, Ridge
 from sklearn.metrics import r2_score, root_mean_squared_error
 
 # ============================================
@@ -96,11 +96,17 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 num_features = ['year', 'odometer']
 cat_features = ['manufacturer', 'condition', 'fuel', 'transmission', 'type']
 
-preprocess = ColumnTransformer([
-    ('num', StandardScaler(), num_features),
-    ('cat', OneHotEncoder(handle_unknown='ignore'), cat_features)
+num_poly = Pipeline([
+    ('scale', StandardScaler()),
+    ('poly', PolynomialFeatures(include_bias=False))
 ])
 
+cat_ohe = OneHotEncoder(handle_unknown='ignore')
+
+preprocess = ColumnTransformer([
+    ('num', num_poly, num_features),
+    ('cat', cat_ohe, cat_features)
+])
 # Helper to wrap model
 
 def make_pipe(model):
@@ -113,12 +119,26 @@ def make_pipe(model):
 ridge = Ridge()
 
 # Parameter grids
-ridge_params = {'model__alpha': [0.1, 1.0, 3.0, 10.0, 20.0]}
+ridge_params = {
+    'prep__num__poly__degree': [1, 2, 3],
+    'model__alpha': [0.1, 1.0, 3.0, 10.0]
+}
+
+'''
+# To do in future: Lasso grid search currently disabled for speed
+lasso = Lasso(max_iter=50000)
+lasso_params = {
+    'prep__num__poly__degree': [1, 2],
+    'model__alpha': [0.001, 0.01, 0.05, 0.1, 0.3],
+    'model__tol': [1e-4, 1e-3, 1e-2]
+}
+'''
 
 # Grid registry
 models = {
     "Linear Regression": make_pipe(LinearRegression()),
-    "Ridge": GridSearchCV(make_pipe(ridge), ridge_params, cv=3, scoring='r2', n_jobs=-1)
+    "Ridge": GridSearchCV(make_pipe(ridge), ridge_params, cv=3, scoring='r2', n_jobs=-1),
+    #"Lasso": GridSearchCV(make_pipe(lasso), lasso_params, cv=3, scoring='r2', n_jobs=-1)
 }
 
 best_results = {}
@@ -147,6 +167,8 @@ best_model_obj = models[best_model_name]
 
 print("\n========================================")
 print(f" BEST MODEL SELECTED: {best_model_name}")
+print("Polynomial degree: {}".format(best_model_obj.best_params_.get('prep__num__poly__degree', 'N/A')))
+print("Alpha: {}".format(best_model_obj.best_params_.get('model__alpha', 'N/A')))
 print("========================================")
 
 final_pipe = (
@@ -163,7 +185,7 @@ y_pred = final_pipe.predict(X_test)
 r2 = r2_score(y_test, y_pred)
 rmse = root_mean_squared_error(y_test, y_pred)
 
-print(f"Test R²: {r2:.4f}")
+print(f"Test R²: {r2:.4f} Polynomial degree: {best_model_obj.best_params_.get('prep__num__poly__degree','N/A')} Alpha: {best_model_obj.best_params_.get('model__alpha','N/A')}")
 print(f"Test RMSE: ${rmse:,.2f}")
 
 plt.figure(figsize=(6,6))
@@ -191,8 +213,16 @@ Top Predictive Features:
 • Type — trucks & SUVs command premiums
 
 Best Model: {}
+Polynomial degree: {}
+Alpha: {}
 Test R²: {:.3f}
 RMSE: ${:,.2f}
 
 ============================================================
-""".format(best_model_name, r2, rmse))
+""".format(
+    best_model_name,
+    best_model_obj.best_params_.get('prep__num__poly__degree', 'N/A'),
+    best_model_obj.best_params_.get('model__alpha', 'N/A'),
+    r2,
+    rmse
+))
