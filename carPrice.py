@@ -196,14 +196,52 @@ plt.ylabel("Predicted Price")
 plt.title(f"Prediction Accuracy — {best_model_name}")
 plt.show()
 
+# FEATURE IMPORTANCE
+
+from sklearn.inspection import permutation_importance
+
+# Only works for models with coef_ or feature_importances_
+print("=== MODEL INTERPRETATION ===")
+
+feature_names = final_pipe.named_steps['prep'].get_feature_names_out()
+
+# 1. Permutation Importance
+print("Permutation Importance (Top 10):")
+perm = permutation_importance(final_pipe, X_test, y_test, n_repeats=5, random_state=42, n_jobs=-1)
+perm_df = pd.DataFrame({
+    'feature': features,
+    'importance': perm.importances_mean
+    }).sort_values('importance', ascending=False).head(10)
+print(perm_df)
+
+# 2. Coefficients (Linear Models)
+if hasattr(final_pipe.named_steps['model'], 'coef_'):
+    print("Coefficient Importance (Top 10):")
+    coef = final_pipe.named_steps['model'].coef_
+    coef_df = pd.DataFrame({
+        'feature': feature_names,
+        'coef': coef,
+        'abs_coef': np.abs(coef)
+        }).sort_values('abs_coef', ascending=False).head(10)
+    print(coef_df)
+else:
+    print("This model does not provide coefficients.")
+
 # ============================================
 # 6. SUMMARY REPORT
 # ============================================
+### Report
+
+# Calculate metrics if not already available
+y_pred = final_pipe.predict(X_test)
+r2 = r2_score(y_test, y_pred)
+rmse = root_mean_squared_error(y_test, y_pred)
 
 print("""
 ============================================================
 USED CAR PRICE ANALYSIS — SUMMARY
 ============================================================
+
 
 Top Predictive Features:
 • Year — newer cars command higher value
@@ -211,6 +249,7 @@ Top Predictive Features:
 • Condition — strong price influence
 • Manufacturer — luxury brands higher priced
 • Type — trucks & SUVs command premiums
+
 
 Best Model: {}
 Polynomial degree: {}
