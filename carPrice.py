@@ -214,6 +214,24 @@ perm_df = pd.DataFrame({
     }).sort_values('importance', ascending=False).head(10)
 print(perm_df)
 
+# Plot predicted price vs year (with polynomial smoothing)
+
+year_grid = np.linspace(df['year'].min(), df['year'].max(), 200)
+temp = df.iloc[:1].copy()
+
+fig = plt.figure(figsize=(8,4))
+preds = []
+
+for yr in year_grid:
+    temp['year'] = yr
+    preds.append(final_pipe.predict(temp[features])[0])
+
+plt.plot(year_grid, preds)
+plt.xlabel("Year")
+plt.ylabel("Predicted Price")
+plt.title("Model Curve: Price vs Year (Polynomial)")
+plt.show()
+
 # 2. Coefficients (Linear Models)
 if hasattr(final_pipe.named_steps['model'], 'coef_'):
     print("Coefficient Importance (Top 10):")
